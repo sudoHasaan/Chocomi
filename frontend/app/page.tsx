@@ -1,17 +1,20 @@
 'use client'
 
-import { useChat } from '@ai-sdk/react'
+import { useChat as useAIChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useEffect, useRef } from 'react'
 import { ChatMessage } from '@/components/chat-message'
 import { ChatInput } from '@/components/chat-input'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useChat } from '@/context/chat-context'
 import { MessageCircle } from 'lucide-react'
 
 export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { activeChat, updateChatMessages, updateChatTitle } = useChat()
+  const titleGeneratedRef = useRef(false)
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status } = useAIChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   })
 
@@ -23,6 +26,40 @@ export default function ChatPage() {
     scrollToBottom()
   }, [messages])
 
+  // Sync messages with active chat
+  useEffect(() => {
+    if (activeChat) {
+      updateChatMessages(activeChat.id, messages)
+    }
+  }, [messages, activeChat, updateChatMessages])
+
+  // Generate title from first user message
+  useEffect(() => {
+    if (
+      activeChat &&
+      messages.length > 0 &&
+      !titleGeneratedRef.current &&
+      activeChat.title === 'New Chat'
+    ) {
+      const firstUserMessage = messages.find(
+        (msg) => msg.role === 'user'
+      )
+      if (firstUserMessage) {
+        const parts = firstUserMessage.parts || []
+        const textContent = parts
+          .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+          .map((p) => p.text)
+          .join('')
+
+        if (textContent) {
+          const title = textContent.substring(0, 50).trim()
+          updateChatTitle(activeChat.id, title)
+          titleGeneratedRef.current = true
+        }
+      }
+    }
+  }, [messages, activeChat, updateChatTitle])
+
   const handleSendMessage = (text: string) => {
     sendMessage({ text })
   }
@@ -30,10 +67,10 @@ export default function ChatPage() {
   const isLoading = status === 'streaming' || status === 'submitted'
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-b from-background via-background to-background">
+    <div className="flex flex-col h-full bg-gradient-to-b from-background via-background to-background">
       {/* Header */}
       <div className="border-b border-border bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between px-6 py-4 max-w-4xl mx-auto w-full">
+        <div className="flex items-center justify-between px-6 py-4 w-full">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <MessageCircle className="w-5 h-5 text-primary" />
@@ -53,7 +90,7 @@ export default function ChatPage() {
 
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto w-full px-6 py-8">
+        <div className="px-6 py-8 max-w-4xl mx-auto">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center py-16">
               <div className="p-4 rounded-full bg-primary/10 mb-4">

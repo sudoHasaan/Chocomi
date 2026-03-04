@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/providers/theme-provider'
+import { ChatProvider } from '@/context/chat-context'
+import { Sidebar } from '@/components/sidebar'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -40,8 +42,15 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider>
-          {children}
-          <Analytics />
+          <ChatProvider>
+            <div className="flex h-screen">
+              <Sidebar />
+              <main className="flex-1 flex flex-col">
+                {children}
+              </main>
+            </div>
+            <Analytics />
+          </ChatProvider>
         </ThemeProvider>
       </body>
     </html>
