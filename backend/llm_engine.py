@@ -7,9 +7,9 @@ from config import settings
 
 
 async def stream_response(messages: list[dict]) -> AsyncGenerator[str, None]:
-    url = f"{settings.ollama_base_url}/api/chat"
+    url = f"{settings.ollamaBaseUrl}/api/chat"
     payload = {
-        "model": settings.ollama_model,
+        "model": settings.ollamaModel,
         "messages": messages,
         "stream": True,
     }

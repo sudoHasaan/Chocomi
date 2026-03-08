@@ -32,30 +32,69 @@ Turn-taking rules:
 - End each reply by asking if there is anything else you can help with
 """
 
+SIGNAL_KEYWORDS: list[str] = [
+    "gpu", "cpu", "ram", "ssd", "psu", "motherboard", "case", "cooling",
+    "budget", "build", "warranty", "return", "rma", "broken", "faulty",
+    "price", "stock", "compatible", "install", "error", "boot", "post",
+    "driver", "monitor", "keyboard", "mouse", "peripheral", "upgrade"
+]
+
 class ConversationSession:
     def __init__(self):
         self._history: list[Message] = []
 
-    def add_user_turn(self, content: str):
+    def addUserTurn(self, content: str):
         self._history.append(Message(role="user", content=content))
 
-    def add_assistant_turn(self, content: str):
+    def addAssistantTurn(self, content: str):
         self._history.append(Message(role="assistant", content=content))
 
-    def build_messages(self) -> list[dict]:
-        trimmed = self._trim_history()
+    def buildMessages(self) -> list[dict]:
+        trimmed = self._trimHistory()
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         messages.extend({"role": m.role, "content": m.content} for m in trimmed)
         return messages
 
-    def _trim_history(self) -> list[Message]:
-        budget = settings.max_history_chars
-        result: list[Message] = []
-        total_chars = 0
+    def _isHighSignal(self, msg: Message) -> bool:
+        lowerContent = msg.content.lower()
+        return any(keyword in lowerContent for keyword in SIGNAL_KEYWORDS)
 
-        for msg in reversed(self._history):
-            total_chars += len(msg.content)
-            if total_chars > budget and len(result) >= 2:
+    def _trimHistory(self) -> list[Message]:
+        if not self._history:
+            return []
+
+        # split into pairs (user + assistant)
+        pairs: list[tuple[Message, Message | None]] = []
+        i = 0
+        while i < len(self._history):
+            userMsg = self._history[i]
+            assistantMsg = self._history[i + 1] if i + 1 < len(self._history) else None
+            pairs.append((userMsg, assistantMsg))
+            i += 2
+
+        # always keep last N pairs
+        recentPairs = pairs[-settings.maxRecentPairs:]
+        middlePairs = pairs[:-settings.maxRecentPairs]
+
+        # from middle, only keep high signal pairs
+        highSignalPairs = [
+            p for p in middlePairs
+            if self._isHighSignal(p[0]) or (p[1] and self._isHighSignal(p[1]))
+        ][-settings.maxMiddlePairs:]
+
+        # flatten back to messages
+        keptMessages: list[Message] = []
+        for userMsg, assistantMsg in (highSignalPairs + recentPairs):
+            keptMessages.append(userMsg)
+            if assistantMsg:
+                keptMessages.append(assistantMsg)
+
+        # hard char cap as final safety net
+        result: list[Message] = []
+        totalChars = 0
+        for msg in reversed(keptMessages):
+            totalChars += len(msg.content)
+            if totalChars > settings.maxTotalChars:
                 break
             result.insert(0, msg)
 

@@ -16,7 +16,7 @@ app = FastAPI(title="TechShop Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=settings.corsOrigins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,13 +25,13 @@ app.add_middleware(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": settings.ollama_model}
+    return {"status": "ok", "model": settings.ollamaModel}
 
 
 @app.post("/chat")
 async def chat_rest(payload: IncomingWSPayload):
     session = ConversationSession()
-    session.add_user_turn(payload.message)
+    session.addUserTurn(payload.message)
     messages = session.build_messages()
 
     reply_parts: list[str] = []
@@ -58,8 +58,8 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.send_text(err.model_dump_json())
                 continue
 
-            session.add_user_turn(payload.message)
-            messages = session.build_messages()
+            session.addUserTurn(payload.message)
+            messages = session.buildMessages()
 
             full_reply: list[str] = []
             try:
@@ -73,7 +73,7 @@ async def websocket_chat(websocket: WebSocket):
                 await websocket.send_text(err.model_dump_json())
                 continue
 
-            session.add_assistant_turn("".join(full_reply))
+            session.addAssistantTurn("".join(full_reply))
 
             done = OutgoingWSMessage(type="done")
             await websocket.send_text(done.model_dump_json())
