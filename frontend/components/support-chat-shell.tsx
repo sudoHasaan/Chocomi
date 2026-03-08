@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef } from 'react'
-import { useChat as useAIChat } from '@ai-sdk/react'
-import { DefaultChatTransport } from 'ai'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { Maximize2, MessageCircle, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { useChat as useStoredChats } from '@/context/chat-context'
+import type { ChatMessage } from '@/context/chat-context'
 
 type ChatMode = 'full' | 'widget'
 
@@ -42,41 +42,96 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
     updateChatTitle,
   } = useStoredChats()
 
-  const { messages, sendMessage, status, setMessages } = useAIChat({
-    id: activeChat?.id,
-    messages: activeChat?.messages ?? [],
-    transport: new DefaultChatTransport({ api: '/api/chat' }),
-  })
+  const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8000/ws/chat'
 
-  const isLoading = status === 'streaming' || status === 'submitted'
+  const wsRef = useRef<WebSocket | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>(activeChat?.messages ?? [])
+  const [isLoading, setIsLoading] = useState(false)
   const containerHeight = mode === 'full' ? 'min-h-[62dvh]' : 'h-[24rem]'
+  // Buffer incoming tokens and flush to state in batches to reduce re-renders
+  const tokenBufferRef = useRef('')
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const flushTokenBuffer = useCallback(() => {
+    if (!tokenBufferRef.current) return
+    const buffered = tokenBufferRef.current
+    tokenBufferRef.current = ''
+    setMessages((prev) => {
+      const last = prev[prev.length - 1]
+      if (last?.role === 'assistant') {
+        return [
+          ...prev.slice(0, -1),
+          { ...last, parts: [{ type: 'text' as const, text: last.parts[0].text + buffered }] },
+        ]
+      }
+      return [...prev, { id: Date.now().toString(), role: 'assistant' as const, parts: [{ type: 'text' as const, text: buffered }] }]
+    })
+  }, [])
+
+  // Reconnect WebSocket when active chat changes (new session per chat)
+  useEffect(() => {
+    if (!activeChat) return
+    setMessages(activeChat.messages)
+
+    const ws = new WebSocket(WS_URL)
+    wsRef.current = ws
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data) as { type: string; content?: string; message?: string }
+      if (data.type === 'token') {
+        tokenBufferRef.current += data.content ?? ''
+        if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+        flushTimerRef.current = setTimeout(flushTokenBuffer, 30)
+      } else if (data.type === 'done') {
+        if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+        flushTokenBuffer()
+        setIsLoading(false)
+      } else if (data.type === 'error') {
+        setIsLoading(false)
+      }
+    }
+
+    ws.onerror = () => setIsLoading(false)
+
+    return () => {
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+      ws.close()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChat?.id])
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Sync messages to context and auto-generate title
   useEffect(() => {
     if (!activeChat) return
-    setMessages(activeChat.messages)
-  }, [activeChat?.id, activeChat?.updatedAt, activeChat?.messages, setMessages])
-
-  useEffect(() => {
-    if (!activeChat) return
-
     updateChatMessages(activeChat.id, messages)
 
     if (activeChat.title !== 'New Chat') return
     const firstUserMessage = messages.find((message) => message.role === 'user')
     if (!firstUserMessage) return
-
     const nextTitle = getMessageText(firstUserMessage).trim()
     if (!nextTitle) return
-
-    updateChatTitle(
-      activeChat.id,
-      nextTitle.length > 42 ? `${nextTitle.slice(0, 42).trimEnd()}...` : nextTitle
-    )
+    updateChatTitle(activeChat.id, nextTitle.length > 42 ? `${nextTitle.slice(0, 42).trimEnd()}...` : nextTitle)
   }, [messages, activeChat, updateChatMessages, updateChatTitle])
+
+  const sendMessage = useCallback(
+    ({ text }: { text: string }) => {
+      if (!text.trim() || isLoading || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+      const userMsg: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        parts: [{ type: 'text', text }],
+      }
+      setMessages((prev) => [...prev, userMsg])
+      setIsLoading(true)
+      wsRef.current.send(JSON.stringify({ message: text }))
+    },
+    [isLoading]
+  )
 
   const promptCards = useMemo(
     () =>
@@ -212,10 +267,10 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
                     className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
                       user
                         ? 'ml-auto bg-primary text-primary-foreground'
-                        : 'border border-border/70 bg-card text-foreground'
+                        : 'border border-border/70 bg-card text-foreground prose prose-sm dark:prose-invert max-w-none'
                     }`}
                   >
-                    {text}
+                    {user ? text : <ReactMarkdown>{text}</ReactMarkdown>}
                   </article>
                 )
               })}

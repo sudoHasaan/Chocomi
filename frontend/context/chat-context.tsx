@@ -1,12 +1,17 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { UIMessage } from 'ai'
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  parts: Array<{ type: 'text'; text: string }>
+}
 
 export interface Chat {
   id: string
   title: string
-  messages: UIMessage[]
+  messages: ChatMessage[]
   createdAt: number
   updatedAt: number
 }
@@ -17,7 +22,7 @@ interface ChatContextType {
   createChat: () => Chat
   deleteChat: (id: string) => void
   setActiveChat: (id: string) => void
-  updateChatMessages: (id: string, messages: UIMessage[]) => void
+  updateChatMessages: (id: string, messages: ChatMessage[]) => void
   updateChatTitle: (id: string, title: string) => void
 }
 
@@ -106,7 +111,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const updateChatMessages = (id: string, messages: UIMessage[]) => {
+  const updateChatMessages = (id: string, messages: ChatMessage[]) => {
     setChats((prev) => {
       let hasChanged = false
 
