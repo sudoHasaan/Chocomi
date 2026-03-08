@@ -2,17 +2,15 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/providers/theme-provider'
-import { ChatProvider } from '@/context/chat-context'
-import { Sidebar } from '@/components/sidebar'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Chocomi | Customer Support Chat',
+  title: 'ByteBodega Support Assistant',
   description:
-    'Chat with Chocomi, our friendly customer support assistant. Get quick answers to your questions and resolve issues with help from our support team.',
+    'ByteBodega is a local computer hardware store with a built-in support assistant for product questions, PC build advice, warranty help, and troubleshooting.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -42,15 +40,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider>
-          <ChatProvider>
-            <div className="flex h-screen">
-              <Sidebar />
-              <main className="flex-1 flex flex-col">
-                {children}
-              </main>
-            </div>
-            <Analytics />
-          </ChatProvider>
+          {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>

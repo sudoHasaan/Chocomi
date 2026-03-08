@@ -40,9 +40,17 @@ export function Sidebar() {
         <div className="flex-1 overflow-y-auto">
           <div className="p-2 space-y-2">
             {chats.map((chat) => (
-              <button
+              <div
                 key={chat.id}
                 onClick={() => setActiveChat(chat.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setActiveChat(chat.id)
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between group ${
                   activeChat?.id === chat.id
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
@@ -55,11 +63,12 @@ export function Sidebar() {
                 </div>
                 <button
                   onClick={(e) => handleDeleteChat(e, chat.id)}
+                  type="button"
                   className="ml-2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-sidebar-accent/70 transition-all"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
-              </button>
+              </div>
             ))}
           </div>
         </div>
