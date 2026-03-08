@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Maximize2, MessageCircle, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import { Maximize2, MessageCircle, PanelLeft, Plus, ShieldCheck, Trash2, X } from 'lucide-react'
 import { useChat as useStoredChats } from '@/context/chat-context'
 import type { ChatMessage } from '@/context/chat-context'
 
@@ -31,6 +31,7 @@ function getMessageText(message: {
 }
 
 export function SupportChatShell({ mode }: SupportChatShellProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const {
     chats,
@@ -47,10 +48,23 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
   const wsRef = useRef<WebSocket | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>(activeChat?.messages ?? [])
   const [isLoading, setIsLoading] = useState(false)
-  const containerHeight = mode === 'full' ? 'min-h-[62dvh]' : 'h-[24rem]'
+  const [isSocketReady, setIsSocketReady] = useState(false)
+  const [messageInput, setMessageInput] = useState('')
+  const [socketSession, setSocketSession] = useState(0)
+  const [stickToBottom, setStickToBottom] = useState(true)
+  const [isMobileHistoryOpen, setIsMobileHistoryOpen] = useState(false)
   // Buffer incoming tokens and flush to state in batches to reduce re-renders
   const tokenBufferRef = useRef('')
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleScroll = useCallback(() => {
+    const node = scrollContainerRef.current
+    if (!node) return
+
+    const threshold = 96
+    const distanceToBottom = node.scrollHeight - node.scrollTop - node.clientHeight
+    setStickToBottom(distanceToBottom <= threshold)
+  }, [])
 
   const flushTokenBuffer = useCallback(() => {
     if (!tokenBufferRef.current) return
@@ -72,9 +86,11 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
   useEffect(() => {
     if (!activeChat) return
     setMessages(activeChat.messages)
+    setIsSocketReady(false)
 
     const ws = new WebSocket(WS_URL)
     wsRef.current = ws
+    ws.onopen = () => setIsSocketReady(true)
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data) as { type: string; content?: string; message?: string }
@@ -91,19 +107,24 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
       }
     }
 
-    ws.onerror = () => setIsLoading(false)
+    ws.onerror = () => {
+      setIsSocketReady(false)
+      setIsLoading(false)
+    }
+    ws.onclose = () => setIsSocketReady(false)
 
     return () => {
       if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
       ws.close()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeChat?.id])
+  }, [activeChat?.id, socketSession])
 
-  // Scroll to bottom on new messages
+  // Scroll only if user is near the bottom. Avoid locking the viewport while streaming.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    if (!stickToBottom) return
+    bottomRef.current?.scrollIntoView({ behavior: isLoading ? 'auto' : 'smooth', block: 'end' })
+  }, [messages, stickToBottom, isLoading])
 
   // Sync messages to context and auto-generate title
   useEffect(() => {
@@ -118,6 +139,10 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
     updateChatTitle(activeChat.id, nextTitle.length > 42 ? `${nextTitle.slice(0, 42).trimEnd()}...` : nextTitle)
   }, [messages, activeChat, updateChatMessages, updateChatTitle])
 
+  useEffect(() => {
+    setIsMobileHistoryOpen(false)
+  }, [activeChat?.id])
+
   const sendMessage = useCallback(
     ({ text }: { text: string }) => {
       if (!text.trim() || isLoading || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
@@ -126,12 +151,22 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
         role: 'user',
         parts: [{ type: 'text', text }],
       }
+      setStickToBottom(true)
       setMessages((prev) => [...prev, userMsg])
       setIsLoading(true)
       wsRef.current.send(JSON.stringify({ message: text }))
     },
     [isLoading]
   )
+
+  const cancelStreaming = useCallback(() => {
+    if (!isLoading) return
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+    flushTokenBuffer()
+    setIsLoading(false)
+    wsRef.current?.close(4000, 'cancelled-by-user')
+    setSocketSession((prev) => prev + 1)
+  }, [flushTokenBuffer, isLoading])
 
   const promptCards = useMemo(
     () =>
@@ -162,7 +197,7 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
   const isFullMode = mode === 'full'
 
   return (
-    <section className="flex h-full overflow-hidden rounded-2xl border border-border/70 bg-background/95 backdrop-blur">
+    <section className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-border/70 bg-background/95 backdrop-blur">
       {isFullMode ? (
         <aside className="hidden w-72 flex-col border-r border-border/70 bg-card/40 lg:flex">
           <div className="border-b border-border/70 p-3">
@@ -215,7 +250,7 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
         </aside>
       ) : null}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 min-h-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border/70 px-4 py-3">
           <div className="flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">
@@ -226,26 +261,119 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
               <p className="text-xs text-muted-foreground">Live support for hardware, builds, and returns</p>
             </div>
           </div>
-          {mode === 'widget' ? (
-            <Link
-              href="/chat"
-              className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-              Expand
-            </Link>
-          ) : (
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              Back to Store
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            {isFullMode ? (
+              <button
+                type="button"
+                onClick={() => setIsMobileHistoryOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
+              >
+                <PanelLeft className="h-3.5 w-3.5" />
+                History
+              </button>
+            ) : null}
+
+            {mode === 'widget' ? (
+              <Link
+                href="/chat"
+                className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+                Expand
+              </Link>
+            ) : (
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                Back to Store
+              </Link>
+            )}
+          </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto px-4 py-4 ${containerHeight}`}>
+        {isFullMode && isMobileHistoryOpen ? (
+          <div className="absolute inset-0 z-40 flex lg:hidden" role="dialog" aria-modal="true" aria-label="Chat history">
+            <button
+              type="button"
+              onClick={() => setIsMobileHistoryOpen(false)}
+              className="flex-1 bg-black/45"
+              aria-label="Close chat history"
+            />
+            <aside className="flex h-full w-[min(82vw,20rem)] flex-col border-l border-border/70 bg-background shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border/70 p-3">
+                <p className="text-sm font-semibold">Chat history</p>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileHistoryOpen(false)}
+                  className="inline-flex items-center justify-center rounded-md border border-border/70 p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label="Close history panel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="border-b border-border/70 p-3">
+                <button
+                  type="button"
+                  onClick={createChat}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Chat
+                </button>
+              </div>
+
+              <div className="flex-1 space-y-1 overflow-y-auto p-2">
+                {chats.map((chat) => (
+                  <button
+                    key={chat.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveChat(chat.id)
+                      setIsMobileHistoryOpen(false)
+                    }}
+                    className={`group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeChat.id === chat.id
+                        ? 'bg-primary/12 text-foreground'
+                        : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+                    }`}
+                  >
+                    <span className="truncate">{chat.title}</span>
+                    {chats.length > 1 ? (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          deleteChat(chat.id)
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            deleteChat(chat.id)
+                          }
+                        }}
+                        className="rounded p-1 text-muted-foreground opacity-100 transition hover:bg-muted"
+                        aria-label={`Delete ${chat.title}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </aside>
+          </div>
+        ) : null}
+
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 min-h-0 overflow-y-auto px-4 py-4"
+        >
           {messages.length === 0 ? (
             <div className="space-y-4">
               <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
@@ -289,12 +417,10 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
         <form
           onSubmit={(event) => {
             event.preventDefault()
-            const form = event.currentTarget
-            const input = form.elements.namedItem('message') as HTMLInputElement | null
-            const value = input?.value?.trim() ?? ''
+            const value = messageInput.trim()
             if (!value || isLoading) return
             sendMessage({ text: value })
-            if (input) input.value = ''
+            setMessageInput('')
           }}
           className="border-t border-border/70 p-3"
         >
@@ -302,17 +428,28 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
             <input
               name="message"
               type="text"
-              disabled={isLoading}
+              value={messageInput}
+              onChange={(event) => setMessageInput(event.target.value)}
               placeholder="Ask about stock, pricing, returns..."
               className="h-10 flex-1 rounded-xl border border-border/70 bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
             />
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="h-10 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Send
-            </button>
+            {isLoading ? (
+              <button
+                type="button"
+                onClick={cancelStreaming}
+                className="h-10 rounded-xl border border-border/70 bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+              >
+                Cancel
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!messageInput.trim() || !isSocketReady}
+                className="h-10 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Send
+              </button>
+            )}
           </div>
         </form>
       </div>

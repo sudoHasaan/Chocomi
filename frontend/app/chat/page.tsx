@@ -13,7 +13,7 @@ export default function ChatPage() {
           <ThemeToggle />
         </header>
 
-        <div className="rounded-2xl shadow-xl">
+        <div className="h-[calc(100dvh-9.5rem)] min-h-[28rem] rounded-2xl shadow-xl">
           <SupportChatShell mode="full" />
         </div>
       </div>

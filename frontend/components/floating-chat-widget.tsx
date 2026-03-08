@@ -10,7 +10,7 @@ export function FloatingChatWidget() {
   return (
     <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
       {isOpen ? (
-        <div className="w-[min(92vw,24rem)] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/5">
+        <div className="relative h-[min(78dvh,36rem)] w-[min(92vw,24rem)] overflow-hidden rounded-2xl shadow-2xl ring-1 ring-black/5">
           <SupportChatShell mode="widget" />
           <button
             type="button"
