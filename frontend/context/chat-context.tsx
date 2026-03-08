@@ -23,6 +23,14 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
 
+const areMessagesEqual = (a: UIMessage[], b: UIMessage[]) => {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+
+  // Compare serialized payloads to avoid unnecessary state writes.
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [chats, setChats] = useState<Chat[]>([])
   const [activeChat, setActiveChatState] = useState<Chat | null>(null)
@@ -99,18 +107,26 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   const updateChatMessages = (id: string, messages: UIMessage[]) => {
-    setChats((prev) =>
-      prev.map((chat) =>
-        chat.id === id
-          ? { ...chat, messages, updatedAt: Date.now() }
-          : chat
-      )
-    )
-    if (activeChat?.id === id) {
-      setActiveChatState((prev) =>
-        prev ? { ...prev, messages, updatedAt: Date.now() } : null
-      )
-    }
+    setChats((prev) => {
+      let hasChanged = false
+
+      const next = prev.map((chat) => {
+        if (chat.id !== id) return chat
+        if (areMessagesEqual(chat.messages, messages)) return chat
+
+        hasChanged = true
+        return { ...chat, messages, updatedAt: Date.now() }
+      })
+
+      return hasChanged ? next : prev
+    })
+
+    setActiveChatState((prev) => {
+      if (!prev || prev.id !== id) return prev
+      if (areMessagesEqual(prev.messages, messages)) return prev
+
+      return { ...prev, messages, updatedAt: Date.now() }
+    })
   }
 
   const updateChatTitle = (id: string, title: string) => {
