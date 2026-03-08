@@ -22,6 +22,9 @@ build/
 .next/
 .nuxt/
 
+# Next.js generated type file
+next-env.d.ts
+
 # OS generated files
 .DS_Store
 Thumbs.db
