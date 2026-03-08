@@ -4,7 +4,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")  # must stay snake_case
 
     ollamaBaseUrl: str = "http://localhost:11434"
-    ollamaModel: str = "qwen2.5:1.5b"
+    ollamaModel: str = "qwen2.5:3b"
     corsOrigins: list[str] = ["http://localhost:3000"]
 
     maxRecentPairs: int = 6
