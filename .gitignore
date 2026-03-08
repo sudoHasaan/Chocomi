@@ -24,9 +24,19 @@ build/
 .next/
 .nuxt/
 
+# Next.js generated type file
+next-env.d.ts
+
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
 
 # v0 runtime files
 __v0_runtime_loader.js
