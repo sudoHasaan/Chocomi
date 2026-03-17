@@ -11,4 +11,9 @@ class Settings(BaseSettings):
     maxMiddlePairs: int = 4
     maxTotalChars: int = 6000
 
+    # Voice pipeline
+    asrModel: str = "tiny"  # faster-whisper model size
+    ttsModel: str = "en_US-lessac-medium"
+    ttsDataDir: str = "tts_models"
+
 settings = Settings()
