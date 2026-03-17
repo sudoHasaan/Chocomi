@@ -3,9 +3,10 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Maximize2, MessageCircle, PanelLeft, Plus, ShieldCheck, Trash2, X } from 'lucide-react'
+import { Maximize2, MessageCircle, Mic, MicOff, PanelLeft, Plus, ShieldCheck, Trash2, Volume2, X } from 'lucide-react'
 import { useChat as useStoredChats } from '@/context/chat-context'
 import type { ChatMessage } from '@/context/chat-context'
+import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
 
 type ChatMode = 'full' | 'widget'
 
@@ -56,6 +57,9 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
   // Buffer incoming tokens and flush to state in batches to reduce re-renders
   const tokenBufferRef = useRef('')
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const { isRecording, startRecording, stopRecording } = useVoiceRecorder()
 
   const handleScroll = useCallback(() => {
     const node = scrollContainerRef.current
@@ -98,6 +102,32 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
         tokenBufferRef.current += data.content ?? ''
         if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
         flushTimerRef.current = setTimeout(flushTokenBuffer, 30)
+      } else if (data.type === 'transcript') {
+        // Replace or update the last user message with the transcript
+        setMessages((prev) => {
+          const last = prev[prev.length - 1]
+          if (last?.role === 'user') {
+            return [
+              ...prev.slice(0, -1),
+              { ...last, parts: [{ type: 'text' as const, text: data.content ?? '' }] },
+            ]
+          }
+          return prev
+        })
+      } else if (data.type === 'audio') {
+        // Play the received audio bytes
+        if (data.content) {
+          const audioBlob = new Blob([Uint8Array.from(atob(data.content), (c) => c.charCodeAt(0))], { type: 'audio/wav' })
+          const url = URL.createObjectURL(audioBlob)
+          if (audioRef.current) {
+            audioRef.current.src = url
+            audioRef.current.play().catch(console.error)
+          } else {
+            const audio = new Audio(url)
+            audioRef.current = audio
+            audio.play().catch(console.error)
+          }
+        }
       } else if (data.type === 'done') {
         if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
         flushTokenBuffer()
@@ -154,10 +184,44 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
       setStickToBottom(true)
       setMessages((prev) => [...prev, userMsg])
       setIsLoading(true)
-      wsRef.current.send(JSON.stringify({ message: text }))
+      wsRef.current.send(JSON.stringify({ type: 'text', message: text }))
     },
     [isLoading]
   )
+
+  const sendVoiceMessage = useCallback(
+    async (audioBlob: Blob) => {
+      if (isLoading || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return
+      
+      const userMsg: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        parts: [{ type: 'text', text: '...' }], // Placeholder until transcript arrives
+      }
+      setStickToBottom(true)
+      setMessages((prev) => [...prev, userMsg])
+      setIsLoading(true)
+
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64Audio = (reader.result as string).split(',')[1]
+        wsRef.current?.send(JSON.stringify({ type: 'voice', audio: base64Audio }))
+      }
+      reader.readAsDataURL(audioBlob)
+    },
+    [isLoading]
+  )
+
+  const handleMicClick = useCallback(async () => {
+    if (isRecording) {
+      const blob = await stopRecording()
+      if (blob) {
+        sendVoiceMessage(blob)
+      }
+    } else {
+      await startRecording()
+    }
+  }, [isRecording, startRecording, stopRecording, sendVoiceMessage])
 
   const cancelStreaming = useCallback(() => {
     if (!isLoading) return
@@ -425,27 +489,39 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
           className="border-t border-border/70 p-3"
         >
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleMicClick}
+              disabled={isLoading && !isRecording}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background transition-colors hover:bg-muted ${
+                isRecording ? 'text-destructive bg-destructive/10 animate-pulse-red border-destructive/50' : 'text-muted-foreground'
+              } disabled:cursor-not-allowed disabled:opacity-60`}
+              title={isRecording ? 'Stop recording' : 'Start voice chat'}
+            >
+              {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            </button>
             <input
               name="message"
               type="text"
               value={messageInput}
               onChange={(event) => setMessageInput(event.target.value)}
-              placeholder="Ask about stock, pricing, returns..."
-              className="h-10 flex-1 rounded-xl border border-border/70 bg-background px-3 text-sm outline-none transition-colors focus:border-primary"
+              placeholder={isRecording ? 'Listening...' : "Ask about stock, pricing, returns..."}
+              disabled={isRecording}
+              className="h-10 flex-1 rounded-xl border border-border/70 bg-background px-3 text-sm outline-none transition-colors focus:border-primary disabled:opacity-80"
             />
             {isLoading ? (
               <button
                 type="button"
                 onClick={cancelStreaming}
-                className="h-10 rounded-xl border border-border/70 bg-background px-3 text-sm font-medium transition-colors hover:bg-muted"
+                className="h-10 rounded-xl border border-border/70 bg-background px-3 text-sm font-medium transition-colors hover:bg-muted font-sans"
               >
                 Cancel
               </button>
             ) : (
               <button
                 type="submit"
-                disabled={!messageInput.trim() || !isSocketReady}
-                className="h-10 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!messageInput.trim() || !isSocketReady || isRecording}
+                className="h-10 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 font-sans"
               >
                 Send
               </button>
