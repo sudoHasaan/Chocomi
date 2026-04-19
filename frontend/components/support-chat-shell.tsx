@@ -161,11 +161,11 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
     if (!activeChat) return
     updateChatMessages(activeChat.id, messages)
 
-    if (activeChat.title !== 'New Chat') return
+    if (activeChat.title !== 'New Chat' && activeChat.title !== '...') return
     const firstUserMessage = messages.find((message) => message.role === 'user')
     if (!firstUserMessage) return
     const nextTitle = getMessageText(firstUserMessage).trim()
-    if (!nextTitle) return
+    if (!nextTitle || nextTitle === '...') return
     updateChatTitle(activeChat.id, nextTitle.length > 42 ? `${nextTitle.slice(0, 42).trimEnd()}...` : nextTitle)
   }, [messages, activeChat, updateChatMessages, updateChatTitle])
 

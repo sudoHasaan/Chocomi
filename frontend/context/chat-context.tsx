@@ -28,7 +28,7 @@ interface ChatContextType {
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined)
 
-const areMessagesEqual = (a: UIMessage[], b: UIMessage[]) => {
+const areMessagesEqual = (a: ChatMessage[], b: ChatMessage[]) => {
   if (a === b) return true
   if (a.length !== b.length) return false
 
