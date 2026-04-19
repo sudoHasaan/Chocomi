@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     ollamaModel: str = "qwen2.5:3b"
     corsOrigins: list[str] = ["http://localhost:3000"]
 
-    maxRecentPairs: int = 6
+    maxRecentPairs: int = 4
     maxMiddlePairs: int = 4
     maxTotalChars: int = 6000
 
