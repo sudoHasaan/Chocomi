@@ -24,8 +24,8 @@ async def get_weather(location: str = "Karachi") -> str:
             data = resp.json()
             cw = data.get("current_weather", {})
             if not cw:
-                return f"Weather unavailable for {location}"
-            return f"The current weather in {location} is {cw.get('temperature', 'unknown')}°C, wind speed {cw.get('windspeed', 'unknown')} km/h."
+                return f"unavailable for {location}"
+            return f"{cw.get('temperature', 'unknown')}°C, wind speed {cw.get('windspeed', 'unknown')} km/h"
         except Exception as e:
             return f"Failed to get weather: {e}"
 

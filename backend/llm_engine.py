@@ -79,9 +79,13 @@ async def stream_response(messages: list[dict]) -> AsyncGenerator[str, None]:
                                 tc_parsed = await parse_tool_calls("<TOOL>"+tool_text+"</TOOL>")
                                 if tc_parsed:
                                     res = await execute_tool_call(tc_parsed[0])
-                                    for char in "\n" + res.get("content", "") + "\n":
-                                        yield char
-                                        await asyncio.sleep(0.005)
+                                    # Stream the tool response word by word to match the LLM's natural speed
+                                    content = res.get("content", "")
+                                    words = (" " + content + " ").split(" ")
+                                    for word in words:
+                                        if word:
+                                            yield word + " "
+                                            await asyncio.sleep(0.05)
                             else:
                                 break
                         else:
