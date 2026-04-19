@@ -1,4 +1,7 @@
 models/
+*.pdf
+
+tts_models/
 
 # dependencies
 node_modules/

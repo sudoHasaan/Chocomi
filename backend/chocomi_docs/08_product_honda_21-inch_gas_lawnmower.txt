@@ -1,0 +1,5 @@
+Product: Honda 21-inch Gas Lawnmower
+Department: Garden Center
+Price: $429.00
+Stock: Available in-store and for delivery.
+Description: The Honda 21-inch Gas Lawnmower is a high-quality product available in our Garden Center department at Chocomi Hardware. Check with an associate for aisle location.

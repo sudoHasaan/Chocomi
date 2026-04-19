@@ -12,4 +12,4 @@ python-multipart
 # audio dependencies
 soundfile
 numpy
-scipy
+scipy
