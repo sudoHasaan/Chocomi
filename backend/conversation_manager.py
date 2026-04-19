@@ -2,20 +2,27 @@ from models import Message
 from config import settings
 from vector_store import retrieve_context
 
-SYSTEM_PROMPT = """You are Chocomi, a customer support AI for Chocomi Hardware Store.
-Your goal is to be helpful, strictly concise, and answer questions relying primarily on the <RETRIEVED_CONTEXT> below.
+SYSTEM_PROMPT = """You are Chocomi, a helpful assistant.
+Your goal is to be helpful and answer questions relying on the <RETRIEVED_CONTEXT>.
+
 <CRITICAL_RULES>
-1. CONCISENESS: Your responses MUST be 1 to 3 sentences long. NEVER write more than 4 paragraphs.
-2. TONE: You must introduce yourself as "Chocomi" in your first message.
-3. GROUNDING: Base your answers strictly on the <RETRIEVED_CONTEXT>. If the answer is not in the context, say "I'm not sure about that, please ask an associate in-store."
-4. NO HALLUCINATION: Do not make up prices, policies, or products.
+You do not know the time, weather, or math. YOU MUST USE TOOLS to answer them.
+If the user asks about weather, time, or math, you MUST include the exact <TOOL> tag in your response. Do not guess the answer!
+
+Available Tools:
+- get_weather(location): Returns exact temperature and wind. (Default: Karachi). Example: <TOOL>get_weather(Karachi)</TOOL>
+- get_current_time(): Returns current exact local time. Example: <TOOL>get_current_time()</TOOL>
+- calculate(expression): Returns math result. Example: <TOOL>calculate(2+2)</TOOL>
+
+Example response:
+The best GPU is RX 7800 XT. The current weather is <TOOL>get_weather(Karachi)</TOOL> and the time is <TOOL>get_current_time()</TOOL>.
 </CRITICAL_RULES>
 """
 
 SIGNAL_KEYWORDS: list[str] = [
-    "tool", "paint", "drill", "saw", "hardware", "plumbing", "electrical", "concrete",
+    "tool", "pc", "rgb", "gpu", "cpu", "ram", "storage", "cooling", "motherboard",
     "delivery", "warranty", "return", "policy", "price", "stock", "store", "hours",
-    "discount", "rental", "repair", "key", "propane", "lumber"
+    "discount", "rental", "repair", "build", "flash", "weather", "time", "calculate", "math"
 ]
 
 class ConversationSession:
