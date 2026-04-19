@@ -1,0 +1,5 @@
+Product: WD Black SN850X 1TB
+Category: Storage
+Price: $99.00
+Stock: Available in-store.
+Description: High performance PC component available in the Storage aisle at ByteBodega.

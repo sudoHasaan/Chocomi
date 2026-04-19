@@ -1,5 +1,0 @@
-Product: Scotts Turf Builder Lawn Food
-Department: Garden Center
-Price: $25.48
-Stock: Available in-store and for delivery.
-Description: The Scotts Turf Builder Lawn Food is a high-quality product available in our Garden Center department at Chocomi Hardware. Check with an associate for aisle location.

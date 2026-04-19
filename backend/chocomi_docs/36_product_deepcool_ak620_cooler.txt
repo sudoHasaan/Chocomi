@@ -1,0 +1,5 @@
+Product: DeepCool AK620 Cooler
+Category: Cooling
+Price: $59.00
+Stock: Available in-store.
+Description: High performance PC component available in the Cooling aisle at ByteBodega.

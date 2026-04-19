@@ -1,4 +1,0 @@
-Topic: Store Credit
-Store: Chocomi Hardware
-
-Returns without a receipt will be issued as store credit at the lowest selling price from the last 90 days. A valid state-issued ID is required for non-receipted returns.

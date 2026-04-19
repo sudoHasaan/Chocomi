@@ -1,0 +1,5 @@
+Product: EVGA SuperNOVA 850G GT 850W 80+ Gold
+Category: PSU
+Price: $139.00
+Stock: Available in-store.
+Description: High performance PC component available in the PSU aisle at ByteBodega.

@@ -1,6 +1,0 @@
-Topic: Store Hours
-Store: Chocomi Hardware
-
-Monday - Saturday: 7:00 AM - 8:00 PM
-Sunday: 9:00 AM - 6:00 PM
-Closed on Thanksgiving and Christmas Day.

@@ -1,0 +1,5 @@
+Product: ASUS ROG Strix Z790-E Gaming WiFi
+Category: Motherboards
+Price: $429.00
+Stock: Available in-store.
+Description: High performance PC component available in the Motherboards aisle at ByteBodega.

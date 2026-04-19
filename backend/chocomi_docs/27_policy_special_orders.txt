@@ -1,4 +1,0 @@
-Topic: Special Orders
-Store: Chocomi Hardware
-
-If we don't carry an item in-store, we can special order it from our warehouse. Special orders must be paid in full upfront and cannot be returned.

@@ -1,0 +1,6 @@
+Topic: Store Hours
+Store: ByteBodega PC Hardware
+
+Monday - Saturday: 10:00 AM - 8:00 PM
+Sunday: 11:00 AM - 5:00 PM
+Closed on major public holidays.

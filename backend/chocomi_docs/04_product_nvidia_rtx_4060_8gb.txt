@@ -1,0 +1,5 @@
+Product: NVIDIA RTX 4060 8GB
+Category: GPUs
+Price: $329.00
+Stock: Available in-store.
+Description: High performance PC component available in the GPUs aisle at ByteBodega.

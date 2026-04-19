@@ -1,0 +1,5 @@
+Product: NVIDIA RTX 4070 Super 12GB
+Category: GPUs
+Price: $589.00
+Stock: Available in-store.
+Description: High performance PC component available in the GPUs aisle at ByteBodega.

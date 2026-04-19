@@ -1,0 +1,5 @@
+Product: AMD Ryzen 5 7600X
+Category: CPUs
+Price: $249.00
+Stock: Available in-store.
+Description: High performance PC component available in the CPUs aisle at ByteBodega.

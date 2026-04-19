@@ -1,5 +1,0 @@
-Product: Milwaukee M18 Impact Driver
-Department: Tools
-Price: $149.00
-Stock: Available in-store and for delivery.
-Description: The Milwaukee M18 Impact Driver is a high-quality product available in our Tools department at Chocomi Hardware. Check with an associate for aisle location.
