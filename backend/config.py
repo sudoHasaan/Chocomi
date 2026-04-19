@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     maxTotalChars: int = 6000
 
     # Voice pipeline
-    asrModel: str = "tiny"  # faster-whisper model size
+    asrModel: str = "UsefulSensors/moonshine-tiny"  # Moonshine model name on Hub
     ttsModel: str = "en_US-lessac-medium"
     ttsDataDir: str = "tts_models"
 

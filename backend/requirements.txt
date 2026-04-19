@@ -3,9 +3,13 @@ uvicorn[standard]
 httpx
 pydantic
 pydantic-settings
-faster-whisper
+transformers
+torch
+librosa
+av
 piper-tts
 python-multipart
 # audio dependencies
 soundfile
-numpy
+numpy
+scipy
