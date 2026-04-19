@@ -9,7 +9,7 @@ The backend orchestrates LLM responses, ASR transcription, and TTS synthesis ent
 ```mermaid
 graph TD
     User([User Client]) -->|WebSocket: Text/Voice| API[FastAPI Server]
-    API -->|Audio Bytes| ASR[ASR Engine: Faster-Whisper]
+    API -->|Audio Bytes| ASR[ASR Engine: Moonshine]
     ASR -->|Transcript| CM[Conversation Manager]
     CM -->|History & Context| Prompt[Prompt Builder]
     Prompt --> Engine[LLM Engine]
@@ -42,7 +42,7 @@ pip install -r requirements.txt
     ```bash
     ollama pull qwen2.5:3b
     ```
-2.  **ASR**: The `faster-whisper` tiny model will be automatically downloaded during the first transcription.
+2.  **ASR**: The `UsefulSensors/moonshine-tiny` model will be automatically downloaded during the first transcription.
 3.  **TTS**: Download the Piper voice models into `backend/tts_models/`:
     - [en_US-lessac-medium.onnx](https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx)
     - [en_US-lessac-medium.onnx.json](https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json)
