@@ -52,8 +52,8 @@ async def tts_endpoint(payload: dict):
 @app.post("/chat")
 async def chat_rest(payload: IncomingWSPayload):
     session = ConversationSession()
-    session.addUserTurn(payload.message)
-    messages = session.build_messages()
+    await session.ingestUserTurn(payload.message)
+    messages = session.buildMessages()
 
     reply_parts: list[str] = []
     async for token in stream_response(messages):
@@ -105,7 +105,7 @@ async def websocket_chat(websocket: WebSocket):
                 # If voice was silence/empty, just continue
                 continue
 
-            session.addUserTurn(user_text)
+            await session.ingestUserTurn(user_text)
             messages = session.buildMessages()
 
             full_reply: list[str] = []
