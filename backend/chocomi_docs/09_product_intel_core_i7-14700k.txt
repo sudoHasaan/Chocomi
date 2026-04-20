@@ -1,0 +1,5 @@
+Product: Intel Core i7-14700K
+Category: CPUs
+Price: $399.00
+Stock: Available in-store.
+Description: High performance PC component available in the CPUs aisle at ByteBodega.

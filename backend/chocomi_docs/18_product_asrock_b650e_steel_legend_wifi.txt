@@ -1,0 +1,5 @@
+Product: ASROCK B650E Steel Legend WiFi
+Category: Motherboards
+Price: $249.00
+Stock: Available in-store.
+Description: High performance PC component available in the Motherboards aisle at ByteBodega.

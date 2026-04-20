@@ -1,0 +1,5 @@
+Product: Gigabyte X670E Aorus Master
+Category: Motherboards
+Price: $449.00
+Stock: Available in-store.
+Description: High performance PC component available in the Motherboards aisle at ByteBodega.

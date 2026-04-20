@@ -1,0 +1,5 @@
+Product: Arctic Liquid Freezer III 360
+Category: Cooling
+Price: $139.00
+Stock: Available in-store.
+Description: High performance PC component available in the Cooling aisle at ByteBodega.

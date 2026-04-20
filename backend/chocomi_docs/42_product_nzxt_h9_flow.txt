@@ -1,0 +1,5 @@
+Product: NZXT H9 Flow
+Category: Cases
+Price: $159.00
+Stock: Available in-store.
+Description: High performance PC component available in the Cases aisle at ByteBodega.

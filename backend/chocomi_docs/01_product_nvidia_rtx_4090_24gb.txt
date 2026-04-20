@@ -1,0 +1,5 @@
+Product: NVIDIA RTX 4090 24GB
+Category: GPUs
+Price: $1599.99
+Stock: Available in-store.
+Description: High performance PC component available in the GPUs aisle at ByteBodega.

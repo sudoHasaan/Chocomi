@@ -1,4 +1,8 @@
 models/
+*.pdf
+.chroma_db/
+
+tts_models/
 
 # dependencies
 node_modules/

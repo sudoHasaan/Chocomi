@@ -6,7 +6,12 @@ import httpx
 
 from models import Message
 from config import settings
+from vector_store import retrieve_context
 
+SYSTEM_PROMPT = """You are Chocomi, a helpful assistant.
+Your goal is to be helpful and answer questions relying on the <RETRIEVED_CONTEXT>.
+
+<<<<<<< HEAD
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are Chocomi, a customer support AI for ByteBodega.
@@ -62,12 +67,26 @@ SYSTEM_PROMPT = """You are Chocomi, a customer support AI for ByteBodega.
                 Assistant: I can only assist with PC hardware and ByteBodega services.
                 </EXAMPLES>
                 """
+=======
+<CRITICAL_RULES>
+You do not know the time, weather, or math. YOU MUST USE TOOLS to answer them.
+If the user asks about weather, time, or math, you MUST include the exact <TOOL> tag in your response. Do not guess the answer!
+
+Available Tools:
+- get_weather(location): Returns exact temperature and wind. (Default: Karachi). Example: <TOOL>get_weather(Karachi)</TOOL>
+- get_current_time(): Returns current exact local time. Example: <TOOL>get_current_time()</TOOL>
+- calculate(expression): Returns math result. Example: <TOOL>calculate(2+2)</TOOL>
+
+Example response:
+The best GPU is RX 7800 XT. The current weather is <TOOL>get_weather(Karachi)</TOOL> and the time is <TOOL>get_current_time()</TOOL>.
+</CRITICAL_RULES>
+"""
+>>>>>>> abdullah
 
 SIGNAL_KEYWORDS: list[str] = [
-    "gpu", "cpu", "ram", "ssd", "psu", "motherboard", "case", "cooling",
-    "budget", "build", "warranty", "return", "rma", "broken", "faulty",
-    "price", "stock", "compatible", "install", "error", "boot", "post",
-    "driver", "monitor", "keyboard", "mouse", "peripheral", "upgrade"
+    "tool", "pc", "rgb", "gpu", "cpu", "ram", "storage", "cooling", "motherboard",
+    "delivery", "warranty", "return", "policy", "price", "stock", "store", "hours",
+    "discount", "rental", "repair", "build", "flash", "weather", "time", "calculate", "math"
 ]
 
 class ConversationSession:
@@ -97,10 +116,29 @@ class ConversationSession:
 
     def buildMessages(self) -> list[dict]:
         trimmed = self._trimHistory()
+<<<<<<< HEAD
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         memoryContext = self._buildMemoryContext()
         if memoryContext:
             messages.append({"role": "system", "content": memoryContext})
+=======
+        
+        # Get the latest user query for RAG
+        latest_query = ""
+        for msg in reversed(trimmed):
+            if msg.role == "user":
+                latest_query = msg.content
+                break
+                
+        # Retrieve context from vector store
+        context = ""
+        if latest_query:
+            context = retrieve_context(latest_query, k=3)
+            
+        sys_prompt_with_rag = SYSTEM_PROMPT + f"\n<RETRIEVED_CONTEXT>\n{context}\n</RETRIEVED_CONTEXT>"
+        
+        messages = [{"role": "system", "content": sys_prompt_with_rag}]
+>>>>>>> abdullah
         messages.extend({"role": m.role, "content": m.content} for m in trimmed)
         return messages
 

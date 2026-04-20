@@ -1,0 +1,5 @@
+Product: Seasonic Focus GX-750 750W 80+ Gold
+Category: PSU
+Price: $109.00
+Stock: Available in-store.
+Description: High performance PC component available in the PSU aisle at ByteBodega.

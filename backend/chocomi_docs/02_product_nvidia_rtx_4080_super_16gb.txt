@@ -1,0 +1,5 @@
+Product: NVIDIA RTX 4080 Super 16GB
+Category: GPUs
+Price: $999.00
+Stock: Available in-store.
+Description: High performance PC component available in the GPUs aisle at ByteBodega.

@@ -1,0 +1,5 @@
+Product: Corsair Vengeance DDR5 32GB
+Category: RAM
+Price: $109.00
+Stock: Available in-store.
+Description: High performance PC component available in the RAM aisle at ByteBodega.

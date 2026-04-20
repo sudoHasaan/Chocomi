@@ -1,0 +1,5 @@
+Product: NZXT Kraken Elite 360 AIO Liquid Cooler
+Category: Cooling
+Price: $279.00
+Stock: Available in-store.
+Description: High performance PC component available in the Cooling aisle at ByteBodega.

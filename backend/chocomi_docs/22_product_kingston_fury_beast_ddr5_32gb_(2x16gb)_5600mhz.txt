@@ -1,0 +1,5 @@
+Product: Kingston Fury Beast DDR5 32GB (2x16GB) 5600MHz
+Category: RAM
+Price: $109.00
+Stock: Available in-store.
+Description: High performance PC component available in the RAM aisle at ByteBodega.

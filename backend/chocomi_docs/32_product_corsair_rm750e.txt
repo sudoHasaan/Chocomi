@@ -1,0 +1,5 @@
+Product: Corsair RM750e
+Category: PSU
+Price: $109.00
+Stock: Available in-store.
+Description: High performance PC component available in the PSU aisle at ByteBodega.

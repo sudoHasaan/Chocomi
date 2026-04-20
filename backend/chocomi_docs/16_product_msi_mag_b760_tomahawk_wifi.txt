@@ -1,0 +1,5 @@
+Product: MSI MAG B760 Tomahawk WiFi
+Category: Motherboards
+Price: $199.00
+Stock: Available in-store.
+Description: High performance PC component available in the Motherboards aisle at ByteBodega.

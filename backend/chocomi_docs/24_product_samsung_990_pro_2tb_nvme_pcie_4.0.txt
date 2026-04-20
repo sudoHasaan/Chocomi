@@ -1,0 +1,5 @@
+Product: Samsung 990 Pro 2TB NVMe PCIe 4.0
+Category: Storage
+Price: $169.00
+Stock: Available in-store.
+Description: High performance PC component available in the Storage aisle at ByteBodega.

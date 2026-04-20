@@ -1,0 +1,5 @@
+Product: Corsair Vengeance RGB DDR5 64GB (2x32GB) 6000MHz
+Category: RAM
+Price: $219.00
+Stock: Available in-store.
+Description: High performance PC component available in the RAM aisle at ByteBodega.

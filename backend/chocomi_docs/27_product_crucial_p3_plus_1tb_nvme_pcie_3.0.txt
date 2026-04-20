@@ -1,0 +1,5 @@
+Product: Crucial P3 Plus 1TB NVMe PCIe 3.0
+Category: Storage
+Price: $69.99
+Stock: Available in-store.
+Description: High performance PC component available in the Storage aisle at ByteBodega.

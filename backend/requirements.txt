@@ -9,7 +9,13 @@ librosa
 av
 piper-tts
 python-multipart
+
+# RAG dependencies
+chromadb
+sentence-transformers
+huggingface-hub
+
 # audio dependencies
 soundfile
 numpy
-scipy
+scipy

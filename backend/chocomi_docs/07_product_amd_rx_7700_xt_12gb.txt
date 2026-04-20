@@ -1,0 +1,5 @@
+Product: AMD RX 7700 XT 12GB
+Category: GPUs
+Price: $419.00
+Stock: Available in-store.
+Description: High performance PC component available in the GPUs aisle at ByteBodega.
