@@ -2,9 +2,6 @@
 
 Chocomi is an AI-powered customer support assistant for **ByteBodega**, a local computer hardware store. This version integrates **Retrieval-Augmented Generation (RAG)**, a **Customer Relationship Management (CRM)** system, and multiple external tools (weather, time, math) to deliver intelligent, personalized, and information-grounded responses in real time.
 
-## Group Members
-- [Team names and roles]
-
 ## Business Use Case
 
 **ByteBodega** is a specialized computer hardware retailer serving DIY PC builders, gamers, and professionals. Customers often ask complex questions about compatibility, specifications, policies, and services. The Chocomi agent:
@@ -18,33 +15,42 @@ This makes support faster, more accurate, and more personalized without exposing
 
 ## 🏗️ Architecture
 
-```
-[Web Frontend (Next.js + React)]
-         ↓ (WebSocket)
-[FastAPI + WebSocket Server]
-         ↓
-[Conversation Manager]
-    ├─→ [Retrieval Module]
-    │   ├─ Embedding Engine (sentence-transformers)
-    │   └─ Vector Store (ChromaDB, 57 docs, 512-token chunks)
-    ├─→ [Tool Orchestrator]
-    │   ├─ CRM Tool (user info, preferences, history)
-    │   ├─ Weather Tool (OpenWeatherMap API)
-    │   ├─ Time Tool (local system time)
-    │   └─ Math Tool (expression evaluation)
-    └─→ [LLM Engine]
-        └─ Ollama (qwen2.5:1.5b, CPU-only)
-         ↓ (Token Stream)
-[Frontend receives streamed response]
+```mermaid
+graph TD
+    A[User] -->|WebSocket| B[FastAPI Server]
+    B --> C[Conversation Manager]
+    C --> D[Retrieval Module]
+    C --> E[Tool Orchestrator]
+    C --> F[LLM Engine]
+    
+    D --> D1["Embedding Engine<br/>sentence-transformers"]
+    D --> D2["Vector Store<br/>ChromaDB 57 docs"]
+    
+    E --> E1["CRM Tool<br/>User Info"]
+    E --> E2["Weather Tool<br/>OpenWeatherMap"]
+    E --> E3["Time Tool<br/>System Time"]
+    E --> E4["Math Tool<br/>Expression Eval"]
+    
+    F --> F1["Ollama<br/>qwen2.5:1.5b"]
+    
+    D2 -.->|Context| F
+    E1 -.->|User Data| F
+    E2 -.->|Weather Data| F
+    E3 -.->|Time Data| F
+    E4 -.->|Math Result| F
+    
+    F -->|Token Stream| B
+    B -->|Response| A
 ```
 
 **Data Flow:**
-1. User sends message via WebSocket (text or voice transcript).
-2. Conversation Manager retrieves related documents from vector store.
-3. Tool Orchestrator detects if tools are needed; executes them asynchronously.
-4. LLM generates response using: conversation history + retrieved context + tool outputs.
-5. Response is streamed token-by-token back to frontend.
-6. CRM is updated with new user information if provided.
+1. User sends message via WebSocket to FastAPI server
+2. Conversation Manager orchestrates three parallel processes:
+   - **Retrieval**: Embedding query, searching vector store for relevant documents
+   - **Tools**: Detecting and executing tool calls (CRM, Weather, Time, Math)
+   - **Generation**: LLM processes conversation history + retrieved context + tool outputs
+3. LLM streams response token-by-token back to frontend
+4. CRM records interaction and updates user profile if needed
 
 ---
 
@@ -340,44 +346,3 @@ docker-compose up -d
 - **Google Cloud Run** (free 2M invocations/month) — scalable but cold start overhead
 - **Oracle Cloud Always-Free** (4GB ARM instance) — sufficient for full stack
 - **AWS Free Tier** (t2.micro 1GB) — very tight for Ollama
-
----
-
-## 📝 Commit Message
-
-```
-feat: integrate RAG, CRM, and tool orchestration for Chocomi support agent
-
-- Added retrieval-augmented generation (RAG) using ChromaDB vector store
-  - 57 documents covering products, policies, and services
-  - Embedding model: all-MiniLM-L6-v2; adaptive k-retrieval (3–5 docs)
-  - Avg retrieval latency: <200ms
-
-- Implemented CRM (Customer Relationship Management) tool
-  - Store/retrieve/update user info (name, email, phone, preferences)
-  - JSON-backed persistence; deterministic tool tagging in prompts
-  - No user-id leakage; session ID propagation from frontend
-
-- Expanded tool orchestrator with three external tools
-  - Weather (OpenWeatherMap API): location extraction with filler phrase removal
-  - Time (system time): word-boundary regex intent detection (fixes false triggers)
-  - Math (ast.literal_eval): safe arithmetic expression evaluation
-
-- Improved prompt system
-  - Reorganized SYSTEM_PROMPT into 5 clear sections (grounding, tools, CRM, privacy, personalization)
-  - Privacy guardrails: no internal metadata exposure (tags, schemas, user_id)
-  - Personalization: remembers and uses customer names and preferences
-
-- Enhanced frontend UX
-  - Sidebar collapse/expand toggle for desktop (responsive layout adjustment)
-  - CRM-driven welcome hero with personalized greeting
-  - Title generation from message intent; manual rename controls
-
-- Fixed critical bugs
-  - Time tool false triggers from "update" (substring match → word-boundary regex)
-  - Weather location parsing strips trailing filler phrases ("expected to be like")
-  - Output token cap (num_predict=120) prevents overly long responses
-  - Memory extraction gated to every 4th turn after 12 turn threshold
-
-- All tests pass; no editor errors in main orchestration files
-```
