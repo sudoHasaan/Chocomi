@@ -41,6 +41,7 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+chocomi/
 
 # v0 runtime files
 __v0_runtime_loader.js
@@ -50,3 +51,7 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 .env*.local
 .DS_Store
+
+# CRM data
+backend/crm_data.sjson
+backend/crm_data.json

@@ -7,7 +7,7 @@ import io
 from functools import lru_cache
 
 import numpy as np
-import av
+# import av
 from transformers import pipeline
 
 from config import settings
@@ -30,53 +30,59 @@ def _get_pipeline():
 
 def _decode_audio(audio_bytes: bytes, target_sr: int = 16000) -> np.ndarray:
     """
-    Decode audio bytes (WebM/Opus/WAV) to float32 numpy array at target_sr.
-    Uses 'av' (PyAV) for portable decoding without needing system FFmpeg.
+    Decode audio bytes → PCM array (mono, 16kHz).
+    Handles WebM, Opus, and raw formats.
     """
-    with io.BytesIO(audio_bytes) as file_obj:
-        with av.open(file_obj) as container:
-            resampler = av.AudioResampler(
-                format='s16',
-                layout='mono',
-                rate=target_sr,
-            )
-            
-            frames = []
-            for frame in container.decode(audio=0):
-                # Resample frame to 16kHz mono
-                resampled_frames = resampler.resample(frame)
-                for f in resampled_frames:
-                    frames.append(f.to_ndarray())
-            
-            if not frames:
-                return np.array([], dtype=np.float32)
-                
-            # Combine and convert to float32 in range [-1, 1]
-            audio_data = np.concatenate(frames, axis=1).reshape(-1)
-            return audio_data.astype(np.float32) / 32768.0
+    try:
+        container = av.open(io.BytesIO(audio_bytes))
+        audio_stream = container.streams.audio[0]
+        audio_frame_array = []
+        for frame in container.decode(audio_stream):
+            audio_frame_array.append(frame.to_ndarray())
+        if audio_frame_array:
+            audio_array = np.concatenate(audio_frame_array, axis=1).squeeze()
+        else:
+            audio_array = np.array([], dtype=np.float32)
+    except Exception as e:
+        logger.warning(f"Failed to decode audio: {e}")
+        audio_array = np.array([], dtype=np.float32)
+
+    if len(audio_array) == 0:
+        return np.array([], dtype=np.float32)
+
+    if audio_array.dtype != np.float32:
+        if np.issubdtype(audio_array.dtype, np.integer):
+            audio_array = audio_array.astype(np.float32) / np.iinfo(audio_array.dtype).max
+        else:
+            audio_array = audio_array.astype(np.float32)
+
+    if len(audio_array.shape) > 1:
+        audio_array = np.mean(audio_array, axis=0)
+
+    return audio_array
 
 
 async def transcribe(audio_bytes: bytes) -> str:
     """
     Transcribe raw audio bytes → text using Moonshine.
+    Runs in a thread-pool so the async event loop stays free.
     """
+    if not audio_bytes:
+        return ""
+
     loop = asyncio.get_running_loop()
 
     def _run() -> str:
         try:
-            # Decode using PyAV (doesn't need system ffmpeg)
-            audio = _decode_audio(audio_bytes, target_sr=16000)
-            
-            if audio.size == 0:
-                logger.warning("Decoded audio is empty")
+            audio_array = _decode_audio(audio_bytes)
+            if len(audio_array) == 0:
                 return ""
-
-            asr = _get_pipeline()
-            # Moonshine inference
-            result = asr({"array": audio, "sampling_rate": 16000})
-            return result["text"].strip()
+            pipeline = _get_pipeline()
+            result = pipeline(audio_array)
+            logger.info("ASR result: %s", result)
+            return result["text"] if isinstance(result, dict) and "text" in result else ""
         except Exception as e:
-            logger.error("Transcription failed", exc_info=True)
+            logger.error(f"ASR error: {e}")
             return ""
 
     return await loop.run_in_executor(None, _run)

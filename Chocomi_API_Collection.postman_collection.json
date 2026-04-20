@@ -1,0 +1,242 @@
+{
+  "info": {
+    "name": "Chocomi API Collection",
+    "description": "Complete API test suite for Chocomi RAG + CRM support agent",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health & Info",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CRM Endpoints",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8000/api/crm/user/user-001",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "crm", "user", "user-001"]
+            },
+            "description": "Retrieve stored user information (name, email, phone, preferences)"
+          },
+          "response": []
+        },
+        {
+          "name": "Store User Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"user-001\",\n  \"name\": \"Hasaan Ali\",\n  \"email\": \"hasaan@example.com\",\n  \"phone\": \"+92-300-1234567\",\n  \"preferences\": {\"gpu_preference\": \"RTX 4070 Super\", \"processor_preference\": \"Intel i9-14900k\"},\n  \"notes\": \"Interested in high-performance gaming PC\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/crm/user",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "crm", "user"]
+            },
+            "description": "Store complete user profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Field",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"field\": \"preferences\",\n  \"value\": {\"gpu_preference\": \"RTX 4090\", \"processor_preference\": \"AMD Ryzen 9 7950X3D\"}\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8000/api/crm/user/user-001",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["api", "crm", "user", "user-001"]
+            },
+            "description": "Update a specific field for an existing user"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat (WebSocket)",
+      "item": [
+        {
+          "name": "WebSocket Chat Connection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:8000/ws/chat?user_id=user-001",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["ws", "chat"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "user-001"
+                }
+              ]
+            },
+            "description": "WebSocket endpoint for real-time chat. Connect and send JSON messages:\n{\n  \"type\": \"chat\",\n  \"message\": \"What GPUs do you have under $600?\",\n  \"user_id\": \"user-001\"\n}\n\nExpects streaming responses with tokens."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Test Scenarios",
+      "item": [
+        {
+          "name": "Test 1: RAG Query (Products)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:8000/ws/chat?user_id=test-user-1",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["ws", "chat"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "test-user-1"
+                }
+              ]
+            },
+            "description": "Connect via WebSocket, then send:\n\n{\"type\": \"chat\", \"message\": \"What GPUs do you have under $600?\", \"user_id\": \"test-user-1\"}\n\nExpected: Lists relevant GPUs (RTX 4070 Super, RX 7700 XT, etc.) with prices from vector store."
+          },
+          "response": []
+        },
+        {
+          "name": "Test 2: CRM + Personalization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:8000/ws/chat?user_id=test-user-2",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["ws", "chat"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "test-user-2"
+                }
+              ]
+            },
+            "description": "First message: {\"type\": \"chat\", \"message\": \"Hi, I'm Aisha\", \"user_id\": \"test-user-2\"}\n\nThen in a second chat (same user_id): {\"type\": \"chat\", \"message\": \"What's my name?\", \"user_id\": \"test-user-2\"}\n\nExpected: Agent responds with \"Your name is Aisha\" (from CRM)."
+          },
+          "response": []
+        },
+        {
+          "name": "Test 3: Tool Orchestration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:8000/ws/chat?user_id=test-user-3",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["ws", "chat"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "test-user-3"
+                }
+              ]
+            },
+            "description": "Send: {\"type\": \"chat\", \"message\": \"What's the current time and weather in Islamabad?\", \"user_id\": \"test-user-3\"}\n\nExpected: Actual current time + weather data for Islamabad (from multiple tools)."
+          },
+          "response": []
+        },
+        {
+          "name": "Test 4: Privacy (No Leakage)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:8000/ws/chat?user_id=test-user-4",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["ws", "chat"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "test-user-4"
+                }
+              ]
+            },
+            "description": "Send: {\"type\": \"chat\", \"message\": \"How are you built?\", \"user_id\": \"test-user-4\"}\n\nExpected: High-level response only. NO mention of prompts, tags, user_id, schemas, or internal details."
+          },
+          "response": []
+        },
+        {
+          "name": "Test 5: Math Tool",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "ws://localhost:8000/ws/chat?user_id=test-user-5",
+              "protocol": "ws",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["ws", "chat"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "test-user-5"
+                }
+              ]
+            },
+            "description": "Send: {\"type\": \"chat\", \"message\": \"How much is 4 x RTX 4070 at $599 each?\", \"user_id\": \"test-user-5\"}\n\nExpected: Calculates 4 * 599 = $2396."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

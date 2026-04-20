@@ -2,6 +2,7 @@ import json
 import httpx
 from datetime import datetime
 import asyncio
+from crm_store import get_user_info, store_user_info, update_user_info
 
 # 1. Weather Tool (Using Open-Meteo Free API)
 async def get_weather(location: str = "Karachi") -> str:
@@ -56,11 +57,47 @@ async def get_current_time(timezone: str = None) -> str:
     except Exception as e:
         return f"Error getting time: {e}"
 
+
+# 4. CRM Tools
+async def crm_get_user_info(user_id: str) -> str:
+    """Retrieve persisted user profile and recent interaction history."""
+    data = get_user_info(user_id)
+    return json.dumps(data, ensure_ascii=True)
+
+
+async def crm_store_user_info(
+    user_id: str,
+    name: str = "",
+    email: str = "",
+    phone: str = "",
+    preferences: str = "",
+    notes: str = "",
+) -> str:
+    """Store user info in CRM (upsert semantics)."""
+    data = store_user_info(
+        user_id=user_id,
+        name=name,
+        email=email,
+        phone=phone,
+        preferences=preferences,
+        notes=notes,
+    )
+    return json.dumps(data, ensure_ascii=True)
+
+
+async def crm_update_user_info(user_id: str, field: str, value: str) -> str:
+    """Update one CRM field for a user."""
+    data = update_user_info(user_id=user_id, field=field, value=value)
+    return json.dumps(data, ensure_ascii=True)
+
 # Tool Registry
 AVAILABLE_TOOLS = {
     "get_weather": get_weather,
     "calculate": calculate,
-    "get_current_time": get_current_time
+    "get_current_time": get_current_time,
+    "crm_get_user_info": crm_get_user_info,
+    "crm_store_user_info": crm_store_user_info,
+    "crm_update_user_info": crm_update_user_info,
 }
 
 TOOLS_SCHEMA = [
@@ -107,6 +144,55 @@ TOOLS_SCHEMA = [
                         "description": "Optional timezone to retrieve the time for"
                     }
                 }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "crm_get_user_info",
+            "description": "Retrieve user CRM profile and recent interaction history. Call for returning users.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "Unique user/session id"}
+                },
+                "required": ["user_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "crm_store_user_info",
+            "description": "Store user information in CRM (name, contact, preferences).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "email": {"type": "string"},
+                    "phone": {"type": "string"},
+                    "preferences": {"type": "string"},
+                    "notes": {"type": "string"}
+                },
+                "required": ["user_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "crm_update_user_info",
+            "description": "Update one CRM profile field for a user.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string"},
+                    "field": {"type": "string", "description": "name|email|phone|preferences|notes"},
+                    "value": {"type": "string"}
+                },
+                "required": ["user_id", "field", "value"]
             }
         }
     }

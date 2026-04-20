@@ -1,12 +1,43 @@
 import json
 from collections.abc import AsyncGenerator
-import asyncio
 import re
 
 import httpx
 
 from config import settings
 from tools import AVAILABLE_TOOLS, execute_tool_call
+
+
+def _split_positional_args(text: str) -> list[str]:
+    args: list[str] = []
+    current: list[str] = []
+    quote: str | None = None
+
+    for ch in text:
+        if quote:
+            if ch == quote:
+                quote = None
+            else:
+                current.append(ch)
+            continue
+
+        if ch in {'"', "'"}:
+            quote = ch
+            continue
+
+        if ch == ",":
+            arg = "".join(current).strip()
+            if arg:
+                args.append(arg)
+            current = []
+            continue
+
+        current.append(ch)
+
+    tail = "".join(current).strip()
+    if tail:
+        args.append(tail)
+    return args
 
 
 async def parse_tool_calls(text: str) -> list[dict]:
@@ -18,6 +49,7 @@ async def parse_tool_calls(text: str) -> list[dict]:
         if func_name in AVAILABLE_TOOLS:
             args = {}
             args_str = args_str.strip()
+            positional = _split_positional_args(args_str) if args_str else []
             
             if args_str:
                 # Map the positional argument to the function's expected parameter
@@ -28,6 +60,31 @@ async def parse_tool_calls(text: str) -> list[dict]:
                 elif func_name == "get_current_time":
                     if args_str and args_str != '()':
                         args = {"timezone": args_str.strip('\'"')}
+                elif func_name == "crm_get_user_info":
+                    if positional:
+                        args = {"user_id": positional[0]}
+                elif func_name == "crm_store_user_info":
+                    # crm_store_user_info(user_id, name, email, phone, preferences, notes)
+                    if positional:
+                        args = {"user_id": positional[0]}
+                    if len(positional) > 1:
+                        args["name"] = positional[1]
+                    if len(positional) > 2:
+                        args["email"] = positional[2]
+                    if len(positional) > 3:
+                        args["phone"] = positional[3]
+                    if len(positional) > 4:
+                        args["preferences"] = positional[4]
+                    if len(positional) > 5:
+                        args["notes"] = positional[5]
+                elif func_name == "crm_update_user_info":
+                    # crm_update_user_info(user_id, field, value)
+                    if len(positional) >= 3:
+                        args = {
+                            "user_id": positional[0],
+                            "field": positional[1],
+                            "value": positional[2],
+                        }
             
             tool_calls.append({
                 "function": {"name": func_name, "arguments": args}
@@ -40,6 +97,10 @@ async def stream_response(messages: list[dict]) -> AsyncGenerator[str, None]:
         "model": settings.ollamaModel,
         "messages": messages,
         "stream": True,
+        "options": {
+            "temperature": 0.2,
+            "num_predict": 120,
+        },
     }
 
     full_response = ""
@@ -79,13 +140,12 @@ async def stream_response(messages: list[dict]) -> AsyncGenerator[str, None]:
                                 tc_parsed = await parse_tool_calls("<TOOL>"+tool_text+"</TOOL>")
                                 if tc_parsed:
                                     res = await execute_tool_call(tc_parsed[0])
-                                    # Stream the tool response word by word to match the LLM's natural speed
+                                    # Emit tool results immediately to avoid artificial latency.
                                     content = res.get("content", "")
                                     words = (" " + content + " ").split(" ")
                                     for word in words:
                                         if word:
                                             yield word + " "
-                                            await asyncio.sleep(0.05)
                             else:
                                 break
                         else:

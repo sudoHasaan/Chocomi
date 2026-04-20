@@ -3,12 +3,12 @@ uvicorn[standard]
 httpx
 pydantic
 pydantic-settings
+# faster-whisper
+# piper-tts
+python-multipart
 transformers
 torch
 librosa
-av
-piper-tts
-python-multipart
 
 # RAG dependencies
 chromadb

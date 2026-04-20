@@ -44,24 +44,23 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // Initialize on mount
   useEffect(() => {
     const stored = localStorage.getItem('chats')
+    let storedChats: Chat[] = []
+    
+    // Load chat history from localStorage
     if (stored) {
       try {
-        const parsedChats = JSON.parse(stored) as Chat[]
-        setChats(parsedChats)
-        if (parsedChats.length > 0) {
-          setActiveChatState(parsedChats[0])
-        }
+        storedChats = JSON.parse(stored) as Chat[]
       } catch (e) {
         console.error('Failed to parse stored chats:', e)
-        const newChat = createNewChat()
-        setChats([newChat])
-        setActiveChatState(newChat)
       }
-    } else {
-      const newChat = createNewChat()
-      setChats([newChat])
-      setActiveChatState(newChat)
     }
+    
+    // Always create a new fresh chat on page load
+    const newChat = createNewChat()
+    // Keep stored chats for history sidebar, but new chat is active
+    const allChats = [newChat, ...storedChats]
+    setChats(allChats)
+    setActiveChatState(newChat)
     setIsMounted(true)
   }, [])
 

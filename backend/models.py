@@ -11,6 +11,7 @@ class IncomingWSPayload(BaseModel):
     type: Literal["text", "voice"] = "text"  # default to text for backward compatibility
     message: str = ""                        # used when type="text"
     audio: str = ""                          # base64 string, used when type="voice"
+    userId: str = ""                         # optional CRM user id
 
 
 class OutgoingWSMessage(BaseModel):

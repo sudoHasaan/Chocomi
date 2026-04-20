@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Maximize2, MessageCircle, Mic, MicOff, PanelLeft, Plus, ShieldCheck, Trash2, Volume2, X } from 'lucide-react'
+import { Check, Maximize2, MessageCircle, Mic, MicOff, PanelLeft, Pencil, Plus, ShieldCheck, Trash2, Volume2, X } from 'lucide-react'
 import { useChat as useStoredChats } from '@/context/chat-context'
 import type { ChatMessage } from '@/context/chat-context'
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder'
@@ -12,6 +12,15 @@ type ChatMode = 'full' | 'widget'
 
 interface SupportChatShellProps {
   mode: ChatMode
+}
+
+function getOrCreateCrmUserId(): string {
+  const key = 'chocomi-crm-user-id'
+  const existing = localStorage.getItem(key)
+  if (existing) return existing
+  const created = `u-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  localStorage.setItem(key, created)
+  return created
 }
 
 const quickPrompts = [
@@ -29,6 +38,43 @@ function getMessageText(message: {
     .filter((part): part is { type: 'text'; text: string } => part.type === 'text' && typeof part.text === 'string')
     .map((part) => part.text)
     .join('')
+}
+
+function buildChatTitleFromMessages(messages: ChatMessage[]): string {
+  const userMessages = messages.filter((message) => message.role === 'user')
+  if (userMessages.length === 0) return ''
+
+  const greetingOnly = /^(hi|hello|hey|good\s+(morning|afternoon|evening)|salam|assalamualaikum)\b[\s!.?,]*$/i
+  const introOnly = /^(?:hi|hello|hey|yo|bro|buddy|dear|good\s+(?:morning|afternoon|evening)|salam|assalamualaikum)?[\s,!.-]*(?:i\s+am|i'm|my\s+name\s+is)\s+[a-z][a-z\s'-]{1,40}[\s!.?,]*$/i
+  const openingNoise = /^(hi|hello|hey|good\s+(morning|afternoon|evening)|salam|assalamualaikum|i\s+am|i'm|my\s+name\s+is)\b[\s,.!-]*/i
+
+  const toIntentTitle = (text: string): string => {
+    const lower = text.toLowerCase()
+    if (/(gpu|rtx|graphics)/.test(lower)) return 'GPU Selection'
+    if (/(cpu|processor|intel|amd)/.test(lower)) return 'Processor Selection'
+    if (/(price|budget|cost)/.test(lower)) return 'Pricing & Budget'
+    if (/(return|refund|warranty|policy)/.test(lower)) return 'Returns & Warranty'
+    if (/(name|preference|profile)/.test(lower)) return 'Profile & Preferences'
+    if (/(compatib|build|pc)/.test(lower)) return 'PC Build Advice'
+    return ''
+  }
+
+  for (const message of userMessages) {
+    const raw = getMessageText(message).trim()
+    if (!raw || raw === '...') continue
+
+    if (greetingOnly.test(raw)) continue
+    if (introOnly.test(raw)) continue
+
+    const cleaned = raw.replace(openingNoise, '').trim()
+    const intentTitle = toIntentTitle(cleaned || raw)
+    if (intentTitle) return intentTitle
+    const candidate = cleaned.length >= 6 ? cleaned : raw
+    return candidate.length > 42 ? `${candidate.slice(0, 42).trimEnd()}...` : candidate
+  }
+
+  // Keep default title if all user messages are greetings/introductions.
+  return ''
 }
 
 export function SupportChatShell({ mode }: SupportChatShellProps) {
@@ -52,6 +98,13 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
   const [isSocketReady, setIsSocketReady] = useState(false)
   const [messageInput, setMessageInput] = useState('')
   const [socketSession, setSocketSession] = useState(0)
+  const [crmUserId, setCrmUserId] = useState('')
+  const [welcomeName, setWelcomeName] = useState('')
+  const [isCrmReady, setIsCrmReady] = useState(false)
+  const [isBackendReady, setIsBackendReady] = useState(false)
+  const [editingChatId, setEditingChatId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [stickToBottom, setStickToBottom] = useState(true)
   const [isMobileHistoryOpen, setIsMobileHistoryOpen] = useState(false)
   // Buffer incoming tokens and flush to state in batches to reduce re-renders
@@ -60,6 +113,45 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   const { isRecording, startRecording, stopRecording } = useVoiceRecorder()
+
+  useEffect(() => {
+    setCrmUserId(getOrCreateCrmUserId())
+    // Check backend readiness
+    const checkBackend = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/health', { signal: AbortSignal.timeout(3000) })
+        if (response.ok) setIsBackendReady(true)
+      } catch {
+        // Retry once
+        setTimeout(() => checkBackend(), 1000)
+      }
+    }
+    checkBackend()
+  }, [])
+
+  useEffect(() => {
+    if (!crmUserId) return
+    const controller = new AbortController()
+    setIsCrmReady(false)
+
+    fetch(`http://localhost:8000/api/crm/user/${encodeURIComponent(crmUserId)}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        const name = data?.profile?.name
+        if (typeof name === 'string' && name.trim()) {
+          setWelcomeName(name.trim())
+        } else {
+          setWelcomeName('')
+        }
+        setIsCrmReady(true)
+      })
+      .catch(() => {
+        setWelcomeName('')
+        setIsCrmReady(true)
+      })
+
+    return () => controller.abort()
+  }, [crmUserId])
 
   const handleScroll = useCallback(() => {
     const node = scrollContainerRef.current
@@ -92,7 +184,8 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
     setMessages(activeChat.messages)
     setIsSocketReady(false)
 
-    const ws = new WebSocket(WS_URL)
+    const url = crmUserId ? `${WS_URL}?user_id=${encodeURIComponent(crmUserId)}` : WS_URL
+    const ws = new WebSocket(url)
     wsRef.current = ws
     ws.onopen = () => setIsSocketReady(true)
 
@@ -148,7 +241,7 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
       ws.close()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeChat?.id, socketSession])
+  }, [activeChat?.id, socketSession, crmUserId])
 
   // Scroll only if user is near the bottom. Avoid locking the viewport while streaming.
   useEffect(() => {
@@ -161,17 +254,37 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
     if (!activeChat) return
     updateChatMessages(activeChat.id, messages)
 
+    // Don't auto-generate title for empty chats or if title is already set
+    if (messages.length === 0) return
     if (activeChat.title !== 'New Chat' && activeChat.title !== '...') return
-    const firstUserMessage = messages.find((message) => message.role === 'user')
-    if (!firstUserMessage) return
-    const nextTitle = getMessageText(firstUserMessage).trim()
+    
+    // Only use messages from the current active chat (safety check for stale state)
+    const messagesToUse = messages.length === activeChat.messages.length ? messages : activeChat.messages
+    const nextTitle = buildChatTitleFromMessages(messagesToUse)
     if (!nextTitle || nextTitle === '...') return
-    updateChatTitle(activeChat.id, nextTitle.length > 42 ? `${nextTitle.slice(0, 42).trimEnd()}...` : nextTitle)
+    updateChatTitle(activeChat.id, nextTitle)
   }, [messages, activeChat, updateChatMessages, updateChatTitle])
 
   useEffect(() => {
     setIsMobileHistoryOpen(false)
   }, [activeChat?.id])
+
+  const startEditTitle = useCallback((chatId: string, title: string) => {
+    setEditingChatId(chatId)
+    setEditingTitle(title)
+  }, [])
+
+  const saveEditedTitle = useCallback(
+    (chatId: string) => {
+      const next = editingTitle.trim()
+      if (next) {
+        updateChatTitle(chatId, next.length > 42 ? `${next.slice(0, 42).trimEnd()}...` : next)
+      }
+      setEditingChatId(null)
+      setEditingTitle('')
+    },
+    [editingTitle, updateChatTitle]
+  )
 
   const sendMessage = useCallback(
     ({ text }: { text: string }) => {
@@ -184,9 +297,9 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
       setStickToBottom(true)
       setMessages((prev) => [...prev, userMsg])
       setIsLoading(true)
-      wsRef.current.send(JSON.stringify({ type: 'text', message: text }))
+      wsRef.current.send(JSON.stringify({ type: 'text', message: text, userId: crmUserId }))
     },
-    [isLoading]
+    [isLoading, crmUserId]
   )
 
   const sendVoiceMessage = useCallback(
@@ -205,11 +318,11 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
       const reader = new FileReader()
       reader.onloadend = () => {
         const base64Audio = (reader.result as string).split(',')[1]
-        wsRef.current?.send(JSON.stringify({ type: 'voice', audio: base64Audio }))
+        wsRef.current?.send(JSON.stringify({ type: 'voice', audio: base64Audio, userId: crmUserId }))
       }
       reader.readAsDataURL(audioBlob)
     },
-    [isLoading]
+    [isLoading, crmUserId]
   )
 
   const handleMicClick = useCallback(async () => {
@@ -262,16 +375,24 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
 
   return (
     <section className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-border/70 bg-background/95 backdrop-blur">
-      {isFullMode ? (
+      {isFullMode && !isSidebarCollapsed ? (
         <aside className="hidden w-72 flex-col border-r border-border/70 bg-card/40 lg:flex">
-          <div className="border-b border-border/70 p-3">
+          <div className="flex items-center justify-between border-b border-border/70 p-3">
             <button
               type="button"
               onClick={createChat}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
               <Plus className="h-4 w-4" />
               New Chat
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSidebarCollapsed(true)}
+              className="ml-2 inline-flex items-center justify-center rounded-lg border border-border/70 p-2 text-muted-foreground transition-colors hover:text-foreground"
+              title="Collapse sidebar"
+            >
+              <PanelLeft className="h-3.5 w-3.5" />
             </button>
           </div>
           <div className="flex-1 space-y-1 overflow-y-auto p-2">
@@ -286,27 +407,67 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
                     : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                 }`}
               >
-                <span className="truncate">{chat.title}</span>
-                {chats.length > 1 ? (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      deleteChat(chat.id)
-                    }}
+                {editingChatId === chat.id ? (
+                  <input
+                    type="text"
+                    value={editingTitle}
+                    onChange={(event) => setEditingTitle(event.target.value)}
+                    onClick={(event) => event.stopPropagation()}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
+                      event.stopPropagation()
+                      if (event.key === 'Enter') {
                         event.preventDefault()
-                        event.stopPropagation()
-                        deleteChat(chat.id)
+                        saveEditedTitle(chat.id)
+                      }
+                      if (event.key === 'Escape') {
+                        setEditingChatId(null)
+                        setEditingTitle('')
                       }
                     }}
-                    className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted group-hover:opacity-100"
-                    aria-label={`Delete ${chat.title}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </span>
+                    autoFocus
+                    className="h-7 w-full rounded border border-border/70 bg-background px-2 text-xs text-foreground outline-none"
+                  />
+                ) : (
+                  <span className="truncate">{chat.title}</span>
+                )}
+                {chats.length > 1 ? (
+                  <div className="flex items-center gap-1">
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        if (editingChatId === chat.id) {
+                          saveEditedTitle(chat.id)
+                        } else {
+                          startEditTitle(chat.id, chat.title)
+                        }
+                      }}
+                      className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted group-hover:opacity-100"
+                      aria-label={editingChatId === chat.id ? `Save ${chat.title}` : `Rename ${chat.title}`}
+                    >
+                      {editingChatId === chat.id ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                    </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        deleteChat(chat.id)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          deleteChat(chat.id)
+                        }
+                      }}
+                      className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted group-hover:opacity-100"
+                      aria-label={`Delete ${chat.title}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
                 ) : null}
               </button>
             ))}
@@ -327,14 +488,26 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
           </div>
           <div className="flex items-center gap-2">
             {isFullMode ? (
-              <button
-                type="button"
-                onClick={() => setIsMobileHistoryOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
-              >
-                <PanelLeft className="h-3.5 w-3.5" />
-                History
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileHistoryOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:hidden"
+                >
+                  <PanelLeft className="h-3.5 w-3.5" />
+                  History
+                </button>
+                {isSidebarCollapsed ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsSidebarCollapsed(false)}
+                    className="hidden items-center gap-2 rounded-lg border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground lg:inline-flex"
+                    title="Show sidebar"
+                  >
+                    <PanelLeft className="h-3.5 w-3.5 rotate-180" />
+                  </button>
+                ) : null}
+              </>
             ) : null}
 
             {mode === 'widget' ? (
@@ -404,27 +577,69 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
                         : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                     }`}
                   >
-                    <span className="truncate">{chat.title}</span>
-                    {chats.length > 1 ? (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          deleteChat(chat.id)
-                        }}
+                    {editingChatId === chat.id ? (
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(event) => setEditingTitle(event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
+                          event.stopPropagation()
+                          if (event.key === 'Enter') {
                             event.preventDefault()
-                            event.stopPropagation()
-                            deleteChat(chat.id)
+                            saveEditedTitle(chat.id)
+                            setIsMobileHistoryOpen(false)
+                          }
+                          if (event.key === 'Escape') {
+                            setEditingChatId(null)
+                            setEditingTitle('')
                           }
                         }}
-                        className="rounded p-1 text-muted-foreground opacity-100 transition hover:bg-muted"
-                        aria-label={`Delete ${chat.title}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </span>
+                        autoFocus
+                        className="h-7 w-full rounded border border-border/70 bg-background px-2 text-xs text-foreground outline-none"
+                      />
+                    ) : (
+                      <span className="truncate">{chat.title}</span>
+                    )}
+                    {chats.length > 1 ? (
+                      <div className="flex items-center gap-1">
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            if (editingChatId === chat.id) {
+                              saveEditedTitle(chat.id)
+                              setIsMobileHistoryOpen(false)
+                            } else {
+                              startEditTitle(chat.id, chat.title)
+                            }
+                          }}
+                          className="rounded p-1 text-muted-foreground opacity-100 transition hover:bg-muted"
+                          aria-label={editingChatId === chat.id ? `Save ${chat.title}` : `Rename ${chat.title}`}
+                        >
+                          {editingChatId === chat.id ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                        </span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            deleteChat(chat.id)
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              deleteChat(chat.id)
+                            }
+                          }}
+                          className="rounded p-1 text-muted-foreground opacity-100 transition hover:bg-muted"
+                          aria-label={`Delete ${chat.title}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
                     ) : null}
                   </button>
                 ))}
@@ -439,15 +654,29 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
           className="flex-1 min-h-0 overflow-y-auto px-4 py-4"
         >
           {messages.length === 0 ? (
-            <div className="space-y-4">
-              <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
-                <p className="text-sm font-medium">Ask Chocomi anything about ByteBodega</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Product availability, pricing, compatibility, warranties, and troubleshooting.
-                </p>
+            isCrmReady && isBackendReady ? (
+              <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center py-8">
+                <div className="text-center">
+                  <p className="text-sm uppercase tracking-[0.2em] text-muted-foreground">ByteBodega Support</p>
+                  <h2 className="mt-3 text-4xl font-semibold leading-tight text-foreground sm:text-5xl">
+                    {welcomeName ? `Welcome back, ${welcomeName}` : 'How can I help you today?'}
+                  </h2>
+                  <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground sm:text-base">
+                    Ask about stock, compatibility, pricing, returns, or troubleshooting. I can also remember your preferences.
+                  </p>
+                </div>
+                <div className="mt-8 grid gap-2">{promptCards}</div>
               </div>
-              <div className="grid gap-2">{promptCards}</div>
-            </div>
+            ) : (
+              <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center py-8">
+                <div className="text-center">
+                  <div className="inline-flex items-center gap-2 rounded-lg border border-border/70 bg-card px-4 py-2">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                    <span className="text-sm text-muted-foreground">Preparing...</span>
+                  </div>
+                </div>
+              </div>
+            )
           ) : (
             <div className="space-y-3">
               {messages.map((message) => {
@@ -501,12 +730,15 @@ export function SupportChatShell({ mode }: SupportChatShellProps) {
               {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </button>
             <input
-              name="message"
               type="text"
               value={messageInput}
               onChange={(event) => setMessageInput(event.target.value)}
               placeholder={isRecording ? 'Listening...' : "Ask about stock, pricing, returns..."}
               disabled={isRecording}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               className="h-10 flex-1 rounded-xl border border-border/70 bg-background px-3 text-sm outline-none transition-colors focus:border-primary disabled:opacity-80"
             />
             {isLoading ? (
