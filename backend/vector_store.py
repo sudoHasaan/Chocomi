@@ -22,12 +22,15 @@ def index_documents():
         
     docs = []
     ids = []
+    metadatas = []
     
-    for i, file_path in enumerate(doc_files):
+    for file_path in doc_files:
+        filename = os.path.basename(file_path)
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
             docs.append(content)
-            ids.append(f"doc_{i}")
+            ids.append(filename) # Use filename as ID for easier evaluation
+            metadatas.append({"filename": filename})
             
     print(f"Embedding and indexing {len(docs)} documents...")
     embeddings = model.encode(docs).tolist()
@@ -39,14 +42,15 @@ def index_documents():
     collection.add(
         ids=ids,
         embeddings=embeddings,
-        documents=docs
+        documents=docs,
+        metadatas=metadatas
     )
     print("Indexing complete.")
 
-def retrieve_context(query: str, k: int = 3) -> str:
+def retrieve_context(query: str, k: int = 3, return_ids: bool = False) -> str | tuple[str, list[str]]:
     """Retrieves top-k documents for a query."""
     if collection.count() == 0:
-        return ""
+        return "" if not return_ids else ("", [])
         
     query_embedding = model.encode([query]).tolist()
     results = collection.query(
@@ -55,10 +59,15 @@ def retrieve_context(query: str, k: int = 3) -> str:
     )
     
     if not results or not results["documents"] or not results["documents"][0]:
-        return ""
+        return "" if not return_ids else ("", [])
         
     retrieved_docs = results["documents"][0]
-    return "\n\n---\n\n".join(retrieved_docs)
+    retrieved_ids = results["ids"][0]
+    
+    context = "\n\n---\n\n".join(retrieved_docs)
+    if return_ids:
+        return context, retrieved_ids
+    return context
 
 if __name__ == "__main__":
     index_documents()
