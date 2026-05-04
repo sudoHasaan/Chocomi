@@ -1,0 +1,54 @@
+[
+  {
+    "query": "What's the weather like in New York?",
+    "expected_tool": "get_weather",
+    "expected_args": { "location": "New York" }
+  },
+  {
+    "query": "How much is 450 * 1.15?",
+    "expected_tool": "calculate",
+    "expected_args": { "expression": "450 * 1.15" }
+  },
+  {
+    "query": "My name is Hasaan and I live in Lahore.",
+    "expected_tool": "crm_update_user_info",
+    "expected_args": { "field": "name", "value": "Hasaan" }
+  },
+  {
+    "query": "Change my preference to high-end GPUs.",
+    "expected_tool": "crm_update_user_info",
+    "expected_args": { "field": "preferences", "value": "GPU: high-end GPUs" }
+  },
+  {
+    "query": "What time is it now?",
+    "expected_tool": "get_current_time",
+    "expected_args": {}
+  },
+  {
+    "query": "I am a gamer and I like RGB lights.",
+    "expected_tool": "crm_update_user_info",
+    "expected_args": { "field": "preferences", "value": "General: I like RGB lights" }
+  },
+  {
+    "query": "What is the square root of 144?",
+    "expected_tool": "calculate",
+    "expected_args": { "expression": "144 ** 0.5" },
+    "note": "LLM might use a different expression, but the tool should be calculate."
+  },
+  {
+    "query": "Is it raining in Karachi?",
+    "expected_tool": "get_weather",
+    "expected_args": { "location": "Karachi" }
+  },
+  {
+    "query": "Set my email to hasaan@example.com",
+    "expected_tool": "crm_update_user_info",
+    "expected_args": { "field": "email", "value": "hasaan@example.com" }
+  },
+  {
+    "query": "Tell me a joke.",
+    "expected_tool": null,
+    "expected_args": null,
+    "note": "Negative test: No tool should be called."
+  }
+]

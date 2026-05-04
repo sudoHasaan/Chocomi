@@ -1,0 +1,99 @@
+[
+  {
+    "query": "What is the return policy for GPUs?",
+    "relevant_docs": ["44_policy_gpu_return_policy.txt", "43_policy_return_policy.txt"]
+  },
+  {
+    "query": "Do you offer military discounts?",
+    "relevant_docs": ["49_policy_military_discount.txt"]
+  },
+  {
+    "query": "What are your store hours?",
+    "relevant_docs": ["54_info_store_hours.txt"]
+  },
+  {
+    "query": "Can you help me build a custom PC?",
+    "relevant_docs": ["48_policy_pc_build_services.txt"]
+  },
+  {
+    "query": "Which NVIDIA 40-series cards do you have?",
+    "relevant_docs": [
+      "01_product_nvidia_rtx_4090_24gb.txt",
+      "02_product_nvidia_rtx_4080_super_16gb.txt",
+      "03_product_nvidia_rtx_4070_super_12gb.txt",
+      "04_product_nvidia_rtx_4060_8gb.txt"
+    ]
+  },
+  {
+    "query": "How can I contact the store?",
+    "relevant_docs": ["56_info_contact_information.txt"]
+  },
+  {
+    "query": "Do you offer BIOS updates?",
+    "relevant_docs": ["53_service_bios_flash_update.txt"]
+  },
+  {
+    "query": "What is the warranty period for hardware?",
+    "relevant_docs": ["45_policy_warranty_policy.txt"]
+  },
+  {
+    "query": "Where is ByteBodega located?",
+    "relevant_docs": ["55_info_location_details.txt"]
+  },
+  {
+    "query": "Tell me about the Pro Gamers Club.",
+    "relevant_docs": ["57_info_pro_gamers_club.txt"]
+  },
+  {
+    "query": "Which Intel processors are in stock?",
+    "relevant_docs": [
+      "08_product_intel_core_i9-14900k.txt",
+      "09_product_intel_core_i7-14700k.txt",
+      "10_product_intel_core_i5-14400f.txt"
+    ]
+  },
+  {
+    "query": "AMD Ryzen 7000 series availability?",
+    "relevant_docs": [
+      "11_product_amd_ryzen_9_7950x3d.txt",
+      "12_product_amd_ryzen_7_7800x3d.txt",
+      "13_product_amd_ryzen_5_7600x.txt",
+      "14_product_amd_ryzen_7_7700.txt"
+    ]
+  },
+  {
+    "query": "Best liquid cooler for i9-14900k?",
+    "relevant_docs": [
+      "33_product_nzxt_kraken_elite_360_aio_liquid_cooler.txt",
+      "34_product_arctic_liquid_freezer_iii_360.txt"
+    ]
+  },
+  {
+    "query": "Do you have DDR5 RAM with 64GB capacity?",
+    "relevant_docs": ["20_product_corsair_vengeance_rgb_ddr5_64gb_(2x32gb)_6000mhz.txt"]
+  },
+  {
+    "query": "What are the specs of the SN850X 2TB?",
+    "relevant_docs": ["25_product_wd_black_sn850x_2tb_nvme_pcie_4.0.txt"]
+  },
+  {
+    "query": "Do you offer price matching?",
+    "relevant_docs": ["46_policy_price_match_guarantee.txt"]
+  },
+  {
+    "query": "Can you recover data from a dead drive?",
+    "relevant_docs": ["50_service_data_recovery.txt"]
+  },
+  {
+    "query": "Do you sell the Lian Li O11 Dynamic?",
+    "relevant_docs": ["40_product_lian_li_o11_dynamic_evo.txt"]
+  },
+  {
+    "query": "What is the price of the RX 7900 XTX?",
+    "relevant_docs": ["05_product_amd_rx_7900_xtx_24gb.txt"]
+  },
+  {
+    "query": "How much for thermal repasting service?",
+    "relevant_docs": ["51_service_thermal_repasting.txt"]
+  }
+]
